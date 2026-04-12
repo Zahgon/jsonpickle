@@ -106,48 +106,17 @@ def decode(
     >>> decode('36')
     36
     """
-
-    if isinstance(on_missing, str):
-        on_missing = on_missing.lower()
-    elif not util._is_function(on_missing):
-        warnings.warn(
-            "Unpickler.on_missing must be a string or a function! It will be ignored!"
-        )
-
-    backend = backend or json
-    is_ephemeral_context = context is None
-    context = context or Unpickler(
-        keys=keys,
-        backend=backend,
-        safe=safe,
-        v1_decode=v1_decode,
-        on_missing=on_missing,
-        handle_readonly=handle_readonly,
-        handler_context=handler_context,
-    )
-    if handler_context is not None:
-        context.handler_context = handler_context
-    data = backend.decode(string)
-    result = context.restore(data, reset=reset, classes=classes)
-    if is_ephemeral_context:
-        # Avoid holding onto references to external objects, which can
-        # prevent garbage collection from occuring.
-        context.reset()
-    return result
+    pass
 
 
 def _safe_hasattr(obj: Any, attr: str) -> bool:
     """Workaround unreliable hasattr() availability on sqlalchemy objects"""
-    try:
-        object.__getattribute__(obj, attr)
-        return True
-    except AttributeError:
-        return False
+    pass
 
 
 def _is_json_key(key: Any) -> bool:
     """Has this key a special object that has been encoded to JSON?"""
-    return isinstance(key, str) and key.startswith(tags.JSON_KEY)
+    pass
 
 
 class _Proxy:
@@ -186,7 +155,7 @@ class _Proxy:
         return self.instance
 
     def reset(self, instance: Any) -> None:
-        self.instance = instance
+        pass
 
 
 class _IDProxy(_Proxy):
@@ -203,12 +172,12 @@ class _IDProxy(_Proxy):
 
 def _obj_setattr(obj: Any, attr: str, proxy: _Proxy) -> None:
     """Use setattr to update a proxy entry"""
-    setattr(obj, attr, proxy.get())
+    pass
 
 
 def _obj_setvalue(obj: Any, idx: Any, proxy: _Proxy) -> None:
     """Use obj[key] assignments to update a proxy entry"""
-    obj[idx] = proxy.get()
+    pass
 
 
 def has_tag(obj: Any, tag: str) -> bool:
@@ -225,33 +194,12 @@ def has_tag(obj: Any, tag: str) -> bool:
     False
 
     """
-    return type(obj) is dict and tag in obj
+    pass
 
 
 def getargs(obj: Dict[str, Any], classes: Optional[Dict[str, Type[Any]]] = None) -> Any:
     """Return arguments suitable for __new__()"""
-    # Let saved newargs take precedence over everything
-    if has_tag(obj, tags.NEWARGSEX):
-        raise ValueError("__newargs_ex__ returns both args and kwargs")
-
-    if has_tag(obj, tags.NEWARGS):
-        return obj[tags.NEWARGS]
-
-    if has_tag(obj, tags.INITARGS):
-        return obj[tags.INITARGS]
-
-    try:
-        seq_list = obj[tags.SEQ]
-        obj_dict = obj[tags.OBJECT]
-    except KeyError:
-        return []
-    typeref = util.loadclass(obj_dict, classes=classes)
-    if not typeref:
-        return []
-    if hasattr(typeref, "_fields"):
-        if len(typeref._fields) == len(seq_list):
-            return seq_list
-    return []
+    pass
 
 
 class _trivialclassic:
@@ -266,9 +214,7 @@ def make_blank_classic(cls: Type[Any]) -> Any:
     which cannot be instantiated without __getinitargs__ because they
     take parameters
     """
-    instance = _trivialclassic()
-    instance.__class__ = cls
-    return instance
+    pass
 
 
 def loadrepr(reprstr: str) -> Any:
@@ -284,13 +230,7 @@ def loadrepr(reprstr: str) -> Any:
     'datetime'
 
     """
-    module, evalstr = reprstr.split("/")
-    mylocals = locals()
-    localname = module
-    if "." in localname:
-        localname = module.split(".", 1)[0]
-    mylocals[localname] = __import__(module)
-    return eval(evalstr, mylocals)
+    pass
 
 
 def _loadmodule(module_str: str) -> Optional[Any]:
@@ -301,21 +241,7 @@ def _loadmodule(module_str: str) -> Optional[Any]:
     'fromtimestamp'
 
     """
-    module, identifier = module_str.split("/")
-    try:
-        result = __import__(module)
-    except ImportError:
-        return None
-    identifier_parts = identifier.split(".")
-    first_identifier = identifier_parts[0]
-    if first_identifier != module and not module.startswith(f"{first_identifier}."):
-        return None
-    for name in identifier_parts[1:]:
-        try:
-            result = getattr(result, name)
-        except AttributeError:
-            return None
-    return result
+    pass
 
 
 def has_tag_dict(obj: Any, tag: str) -> bool:
@@ -332,12 +258,12 @@ def has_tag_dict(obj: Any, tag: str) -> bool:
     False
 
     """
-    return tag in obj
+    pass
 
 
 def _passthrough(value: Any) -> Any:
     """A function that returns its input as-is"""
-    return value
+    pass
 
 
 class Unpickler:
@@ -364,36 +290,18 @@ class Unpickler:
 
     def reset(self) -> None:
         """Resets the object's internal state."""
-        # Map reference names to object instances
-        self._namedict = {}
-
-        # The stack of names traversed for child objects
-        self._namestack = []
-
-        # Map of objects to their index in the _objs list
-        self._obj_to_idx = {}
-        self._objs = []
-        self._proxies = []
-
-        # Extra local classes not accessible globally
-        self._classes = {}
+        pass
 
     def _swap_proxies(self) -> None:
         """Replace proxies with their corresponding instances"""
-        for obj, attr, proxy, method in self._proxies:
-            method(obj, attr, proxy)
-        self._proxies = []
+        pass
 
     def _restore(
         self, obj: Any, _passthrough: Callable[[Any], Any] = _passthrough
     ) -> Any:
         # if obj isn't in these types, neither it nor nothing in it can have a tag
         # don't change the tuple of types to a set, it won't work with isinstance
-        if not isinstance(obj, (str, list, dict, set, tuple)):
-            restore = _passthrough
-        else:
-            restore = self._restore_tags(obj)
-        return restore(obj)
+        pass
 
     def restore(
         self, obj: Any, reset: bool = True, classes: Optional[ClassesType] = None
@@ -409,14 +317,7 @@ class Unpickler:
         True
 
         """
-        if reset:
-            self.reset()
-        if classes:
-            self.register_classes(classes)
-        value = self._restore(obj)
-        if reset:
-            self._swap_proxies()
-        return value
+        pass
 
     def register_classes(self, classes: ClassesType) -> None:
         """Register one or more classes
@@ -424,31 +325,13 @@ class Unpickler:
         :param classes: sequence of classes or a single class to register
 
         """
-        if isinstance(classes, (list, tuple, set)):
-            for cls in classes:
-                self.register_classes(cls)
-        elif isinstance(classes, dict):
-            self._classes.update(
-                (
-                    cls if isinstance(cls, str) else util.importable_name(cls),
-                    handler,
-                )
-                for cls, handler in classes.items()
-            )
-        else:
-            self._classes[util.importable_name(classes)] = classes  # type: ignore[arg-type]
+        pass
 
     def _restore_base64(self, obj: Dict[str, Any]) -> bytes:
-        try:
-            return util.b64decode(obj[tags.B64].encode("utf-8"))
-        except (AttributeError, UnicodeEncodeError):
-            return b""
+        pass
 
     def _restore_base85(self, obj: Dict[str, Any]) -> bytes:
-        try:
-            return util.b85decode(obj[tags.B85].encode("utf-8"))
-        except (AttributeError, UnicodeEncodeError):
-            return b""
+        pass
 
     def _refname(self) -> str:
         """Calculates the name of the current location in the JSON stack.
@@ -472,50 +355,19 @@ class Unpickler:
         True
 
         """
-        return "/" + "/".join(self._namestack)
+        pass
 
     def _mkref(self, obj: Any) -> Any:
-        obj_id = id(obj)
-        try:
-            _ = self._obj_to_idx[obj_id]
-        except KeyError:
-            self._obj_to_idx[obj_id] = len(self._objs)
-            self._objs.append(obj)
-            # Backwards compatibility: old versions of jsonpickle
-            # produced "py/ref" references.
-            self._namedict[self._refname()] = obj
-        return obj
+        pass
 
     def _restore_list(self, obj: List[Any]) -> List[Any]:
-        parent = []
-        self._mkref(parent)
-        children = [self._restore(v) for v in obj]
-        parent.extend(children)
-        method = _obj_setvalue
-        proxies = [
-            (parent, idx, value, method)
-            for idx, value in enumerate(parent)
-            if isinstance(value, _Proxy)
-        ]
-        self._proxies.extend(proxies)
-        return parent
+        pass
 
     def _restore_iterator(self, obj: Dict[str, Any]) -> Iterator[Any]:
-        try:
-            return iter(self._restore_list(obj[tags.ITERATOR]))
-        except TypeError:
-            return iter([])
+        pass
 
     def _swapref(self, proxy: _Proxy, instance: Any) -> None:
-        proxy_id = id(proxy)
-        instance_id = id(instance)
-
-        instance_index = self._obj_to_idx[proxy_id]
-        self._obj_to_idx[instance_id] = instance_index
-        del self._obj_to_idx[proxy_id]
-
-        self._objs[instance_index] = instance
-        self._namedict[self._refname()] = instance
+        pass
 
     def _restore_reduce(self, obj: Dict[str, Any]) -> Any:
         """
@@ -523,142 +375,33 @@ class Unpickler:
         Assumes that iterator items (the last two) are represented as lists
         as per pickler implementation.
         """
-        proxy = _Proxy()
-        self._mkref(proxy)
-        try:
-            reduce_val = list(map(self._restore, obj[tags.REDUCE]))
-        except TypeError:
-            result = []
-            proxy.reset(result)
-            self._swapref(proxy, result)
-            return result
-        if len(reduce_val) < 5:
-            reduce_val.extend([None] * (5 - len(reduce_val)))
-        f, args, state, listitems, dictitems = reduce_val
-
-        if f == tags.NEWOBJ or getattr(f, "__name__", "") == "__newobj__":
-            # mandated special case
-            cls = args[0]
-            if not isinstance(cls, type):
-                cls = self._restore(cls)
-            stage1 = cls.__new__(cls, *args[1:])
-        else:
-            if not callable(f):
-                result = []
-                proxy.reset(result)
-                self._swapref(proxy, result)
-                return result
-            try:
-                stage1 = f(*args)
-            except TypeError:
-                # this happens when there are missing kwargs and args don't match so we bypass
-                # __init__ since the state dict will set all attributes immediately afterwards
-                stage1 = f.__new__(f, *args)
-
-        if state:
-            try:
-                stage1.__setstate__(state)
-            except AttributeError:
-                # it's fine - we'll try the prescribed default methods
-                try:
-                    # we can't do a straight update here because we
-                    # need object identity of the state dict to be
-                    # preserved so that _swap_proxies works out
-                    for k, v in stage1.__dict__.items():
-                        state.setdefault(k, v)
-                    stage1.__dict__ = state
-                except AttributeError:
-                    # next prescribed default
-                    try:
-                        for k, v in state.items():
-                            setattr(stage1, k, v)
-                    except Exception:
-                        dict_state, slots_state = state
-                        if dict_state:
-                            stage1.__dict__.update(dict_state)
-                        if slots_state:
-                            for k, v in slots_state.items():
-                                setattr(stage1, k, v)
-
-        if listitems:
-            # should be lists if not None
-            try:
-                stage1.extend(listitems)
-            except AttributeError:
-                for x in listitems:
-                    stage1.append(x)
-
-        if dictitems:
-            for k, v in dictitems:
-                stage1.__setitem__(k, v)
-
-        proxy.reset(stage1)
-        self._swapref(proxy, stage1)
-        return stage1
+        pass
 
     def _restore_id(self, obj: Dict[str, Any]) -> Any:
-        try:
-            idx = obj[tags.ID]
-            return self._objs[idx]
-        except IndexError:
-            return _IDProxy(self._objs, idx)
-        except TypeError:
-            return None
+        pass
 
     def _restore_type(self, obj: Dict[str, Any]) -> Any:
-        typeref = util.loadclass(obj[tags.TYPE], classes=self._classes)
-        if typeref is None:
-            return obj
-        return typeref
+        pass
 
     def _restore_module(self, obj: Dict[str, Any]) -> Any:
-        new_obj = _loadmodule(obj[tags.MODULE])
-        return self._mkref(new_obj)
+        pass
 
     def _restore_repr_safe(self, obj: Dict[str, Any]) -> Any:
-        new_obj = _loadmodule(obj[tags.REPR])
-        return self._mkref(new_obj)
+        pass
 
     def _restore_repr(self, obj: Dict[str, Any]) -> Any:
-        obj = loadrepr(obj[tags.REPR])
-        return self._mkref(obj)
+        pass
 
     def _loadfactory(self, obj: Dict[str, Any]) -> Optional[Any]:
-        default_factory = None
-        for key in (tags.DEFAULT_FACTORY, "default_factory"):
-            try:
-                default_factory = obj.pop(key)
-                break
-            except KeyError:
-                continue
-        if default_factory is None:
-            return None
-        return self._restore(default_factory)
+        pass
 
     def _process_missing(self, class_name: str) -> None:
         # most common case comes first
-        if self.on_missing == "ignore":
-            pass
-        elif self.on_missing == "warn":
-            warnings.warn("Unpickler._restore_object could not find %s!" % class_name)
-        elif self.on_missing == "error":
-            raise errors.ClassNotFoundError(
-                "Unpickler.restore_object could not find %s!" % class_name  # type: ignore[arg-type]
-            )
-        elif util._is_function(self.on_missing):
-            self.on_missing(class_name)  # type: ignore[operator]
+        pass
 
     def _restore_pickled_key(self, key: str) -> Any:
         """Restore a possibly pickled key"""
-        if _is_json_key(key):
-            key = decode(
-                key[len(tags.JSON_KEY) :],
-                backend=self.backend,
-                context=self,
-                keys=True,
-                reset=False,
-            )
-        return key
+        pass
 
     def _restore_key_fn(
         self, _passthrough: Callable[[Any], Any] = _passthrough
@@ -669,16 +412,7 @@ class Unpickler:
         when we are decoding with `keys=True`.
 
         """
-        # This function is called before entering a tight loop
-        # where the returned function will be called.
-        # We return a specific function after checking self.keys
-        # instead of doing so in the body of the function to
-        # avoid conditional branching inside a tight loop.
-        if self.keys:
-            restore_key = self._restore_pickled_key
-        else:
-            restore_key = _passthrough  # type: ignore[assignment]
-        return restore_key
+        pass
 
     def _restore_from_dict(
         self,
@@ -687,327 +421,45 @@ class Unpickler:
         ignorereserved: bool = True,
         restore_dict_items: bool = True,
     ) -> Any:
-        restore_key = self._restore_key_fn()
-        method = _obj_setattr
-        deferred = {}
-
-        for k, v in util.items(obj):
-            # ignore the reserved attribute
-            if ignorereserved and k in tags.RESERVED:
-                continue
-            if isinstance(k, (int, float)):
-                str_k = k.__str__()
-            else:
-                str_k = k
-            self._namestack.append(str_k)
-            if restore_dict_items:
-                k = restore_key(k)
-                # step into the namespace
-                value = self._restore(v)
-            else:
-                value = v
-            if util._is_noncomplex(instance) or util._is_dictionary_subclass(instance):
-                try:
-                    if k == "__dict__":
-                        setattr(instance, k, value)
-                    else:
-                        instance[k] = value
-                except TypeError:
-                    # Immutable object, must be constructed in one shot
-                    if k != "__dict__":
-                        deferred[k] = value
-                    self._namestack.pop()
-                    continue
-            else:
-                if not k.startswith("__"):
-                    try:
-                        setattr(instance, k, value)
-                    except KeyError:
-                        # certain numpy objects require us to prepend a _ to the var
-                        # this should go in the np handler but I think this could be
-                        # useful for other code
-                        setattr(instance, f"_{k}", value)
-                    except dataclasses.FrozenInstanceError:
-                        # issue #240
-                        # i think this is the only way to set frozen dataclass attrs
-                        object.__setattr__(instance, k, value)
-                    except AttributeError as e:
-                        # some objects raise this for read-only attributes (#422) (#478)
-                        if (
-                            hasattr(instance, "__slots__")
-                            and not len(instance.__slots__)
-                            # we have to handle this separately because of +483
-                            and issubclass(instance.__class__, (int, str))
-                            and self.handle_readonly
-                        ):
-                            continue
-                        raise e
-                else:
-                    setattr(instance, f"_{instance.__class__.__name__}{k}", value)
-
-            # This instance has an instance variable named `k` that is
-            # currently a proxy and must be replaced
-            if isinstance(value, _Proxy):
-                self._proxies.append((instance, k, value, method))
-
-            # step out
-            self._namestack.pop()
-
-        if deferred:
-            # SQLAlchemy Immutable mappings must be constructed in one shot
-            instance = instance.__class__(deferred)
-
-        return instance
+        pass
 
     def _restore_state(self, obj: Dict[str, Any], instance: Any) -> Any:
-        state = self._restore(obj[tags.STATE])
-        has_slots = (
-            isinstance(state, tuple) and len(state) == 2 and isinstance(state[1], dict)
-        )
-        has_slots_and_dict = has_slots and isinstance(state[0], dict)
-        if hasattr(instance, "__setstate__"):
-            instance.__setstate__(state)
-        elif isinstance(state, dict):
-            # implements described default handling
-            # of state for object with instance dict
-            # and no slots
-            instance = self._restore_from_dict(
-                state, instance, ignorereserved=False, restore_dict_items=False
-            )
-        elif has_slots:
-            instance = self._restore_from_dict(
-                state[1], instance, ignorereserved=False, restore_dict_items=False
-            )
-            if has_slots_and_dict:
-                instance = self._restore_from_dict(
-                    state[0], instance, ignorereserved=False, restore_dict_items=False
-                )
-        elif not hasattr(instance, "__getnewargs__") and not hasattr(
-            instance, "__getnewargs_ex__"
-        ):
-            # __setstate__ is not implemented so that means that the best
-            # we can do is return the result of __getstate__() rather than
-            # return an empty shell of an object.
-            # However, if there were newargs, it's not an empty shell
-            instance = state
-        return instance
+        pass
 
     def _restore_object_instance_variables(
         self, obj: Dict[str, Any], instance: Any
     ) -> Any:
-        instance = self._restore_from_dict(obj, instance)
-
-        # Handle list and set subclasses
-        if has_tag(obj, tags.SEQ):
-            if hasattr(instance, "append"):
-                for v in obj[tags.SEQ]:
-                    instance.append(self._restore(v))
-            elif hasattr(instance, "add"):
-                for v in obj[tags.SEQ]:
-                    instance.add(self._restore(v))
-
-        if has_tag(obj, tags.STATE):
-            instance = self._restore_state(obj, instance)
-
-        return instance
+        pass
 
     def _restore_object_instance(
         self, obj: Dict[str, Any], cls: Type[Any], class_name: str = ""
     ) -> Any:
         # This is a placeholder proxy object which allows child objects to
         # reference the parent object before it has been instantiated.
-        proxy = _Proxy()
-        self._mkref(proxy)
-
-        # An object can install itself as its own factory, so load the factory
-        # after the instance is available for referencing.
-        factory = self._loadfactory(obj)
-
-        if has_tag(obj, tags.NEWARGSEX):
-            args, kwargs = obj[tags.NEWARGSEX]
-        else:
-            args = getargs(obj, classes=self._classes)
-            kwargs = {}
-        if args:
-            args = self._restore(args)
-        if kwargs:
-            kwargs = self._restore(kwargs)
-
-        is_oldstyle = not (isinstance(cls, type) or getattr(cls, "__meta__", None))
-        try:
-            if not is_oldstyle and hasattr(cls, "__new__"):
-                # new style classes
-                if factory:
-                    instance = cls.__new__(cls, factory, *args, **kwargs)
-                    instance.default_factory = factory
-                else:
-                    instance = cls.__new__(cls, *args, **kwargs)
-            else:
-                instance = object.__new__(cls)
-        except TypeError:  # old-style classes
-            is_oldstyle = True
-
-        if is_oldstyle:
-            try:
-                instance = cls(*args)
-            except TypeError:  # fail gracefully
-                try:
-                    instance = make_blank_classic(cls)
-                except Exception:  # fail gracefully
-                    self._process_missing(class_name)
-                    return self._mkref(obj)
-
-        proxy.reset(instance)
-        self._swapref(proxy, instance)
-
-        if isinstance(instance, tuple):
-            return instance
-
-        instance = self._restore_object_instance_variables(obj, instance)
-
-        if _safe_hasattr(instance, "default_factory") and isinstance(
-            instance.default_factory, _Proxy
-        ):
-            instance.default_factory = instance.default_factory.get()
-
-        return instance
+        pass
 
     def _restore_object(self, obj: Dict[str, Any]) -> Any:
-        class_name = obj[tags.OBJECT]
-        cls = util.loadclass(class_name, classes=self._classes)
-        handler = handlers.get(cls, handlers.get(class_name))  # type: ignore[arg-type]
-        if handler is not None:  # custom handler
-            proxy = _Proxy()
-            self._mkref(proxy)
-            handler_instance = handler(self)
-            instance = self._call_handler_restore(handler_instance, obj)
-            proxy.reset(instance)
-            self._swapref(proxy, instance)
-            return instance
-
-        if cls is None:
-            self._process_missing(class_name)
-            return self._mkref(obj)
-
-        return self._restore_object_instance(obj, cls, class_name)
+        pass
 
     def _restore_function(self, obj: Dict[str, Any]) -> Any:
-        return util.loadclass(obj[tags.FUNCTION], classes=self._classes)
+        pass
 
     def _restore_set(self, obj: Dict[str, Any]) -> Set[Any]:
-        try:
-            return {self._restore(v) for v in obj[tags.SET]}
-        except TypeError:
-            return set()
+        pass
 
     def _restore_dict(self, obj: Dict[str, Any]) -> Dict[str, Any]:
-        data = {}
-        if not self.v1_decode:
-            self._mkref(data)
-
-        # If we are decoding dicts that can have non-string keys then we
-        # need to do a two-phase decode where the non-string keys are
-        # processed last.  This ensures a deterministic order when
-        # assigning object IDs for references.
-        if self.keys:
-            # Phase 1: regular non-special keys.
-            for k, v in util.items(obj):
-                if _is_json_key(k):
-                    continue
-                if isinstance(k, (int, float)):
-                    str_k = k.__str__()
-                else:
-                    str_k = k
-                self._namestack.append(str_k)
-                data[k] = self._restore(v)
-
-                self._namestack.pop()
-
-            # Phase 2: object keys only.
-            for k, v in util.items(obj):
-                if not _is_json_key(k):
-                    continue
-                self._namestack.append(k)
-
-                k = self._restore_pickled_key(k)
-                data[k] = result = self._restore(v)
-                # k is currently a proxy and must be replaced
-                if isinstance(result, _Proxy):
-                    self._proxies.append((data, k, result, _obj_setvalue))
-
-                self._namestack.pop()
-        else:
-            # No special keys, thus we don't need to restore the keys either.
-            for k, v in util.items(obj):
-                if isinstance(k, (int, float)):
-                    str_k = k.__str__()
-                else:
-                    str_k = k
-                self._namestack.append(str_k)
-                data[k] = result = self._restore(v)
-                if isinstance(result, _Proxy):
-                    self._proxies.append((data, k, result, _obj_setvalue))
-                self._namestack.pop()
-        return data
+        pass
 
     def _restore_tuple(self, obj: Dict[str, Any]) -> Tuple[Any, ...]:
-        try:
-            return tuple(self._restore(v) for v in obj[tags.TUPLE])
-        except TypeError:
-            return ()
+        pass
 
     def _restore_tags(
         self, obj: Any, _passthrough: Callable[[Any], Any] = _passthrough
     ) -> Callable[[Any], Any]:
         """Return the restoration function for the specified object"""
-        try:
-            if not tags.RESERVED <= set(obj) and type(obj) not in (list, dict):
-                return _passthrough
-        except TypeError:
-            pass
-        if type(obj) is dict:
-            if tags.TUPLE in obj:
-                restore = self._restore_tuple
-            elif tags.SET in obj:
-                restore = self._restore_set  # type: ignore[assignment]
-            elif tags.B64 in obj:
-                restore = self._restore_base64  # type: ignore[assignment]
-            elif tags.B85 in obj:
-                restore = self._restore_base85  # type: ignore[assignment]
-            elif tags.ID in obj:
-                restore = self._restore_id
-            elif tags.ITERATOR in obj:
-                restore = self._restore_iterator  # type: ignore[assignment]
-            elif tags.OBJECT in obj:
-                restore = self._restore_object
-            elif tags.TYPE in obj:
-                restore = self._restore_type
-            elif tags.REDUCE in obj:
-                restore = self._restore_reduce
-            elif tags.FUNCTION in obj:
-                restore = self._restore_function
-            elif tags.MODULE in obj:
-                restore = self._restore_module
-            elif tags.REPR in obj:
-                if self.safe:
-                    restore = self._restore_repr_safe
-                else:
-                    restore = self._restore_repr
-            else:
-                restore = self._restore_dict  # type: ignore[assignment]
-        elif type(obj) is list:
-            restore = self._restore_list  # type: ignore[assignment]
-        else:
-            restore = _passthrough  # type: ignore[assignment]
-        return restore
+        pass
 
     def _call_handler_restore(
         self, handler: handlers.BaseHandler, obj: Dict[str, Any]
     ) -> Any:
-        kwargs: dict[str, Any] = {}
-        if (
-            self.handler_context is not None
-            and handlers.handler_accepts_handler_context(handler.restore)
-        ):
-            kwargs["handler_context"] = self.handler_context
-        return handler.restore(obj, **kwargs)
+        pass

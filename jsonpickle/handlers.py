@@ -91,8 +91,7 @@ class Registry:
         if handler is None:
 
             def _register(handler_cls: Type[Any]) -> Type[Any]:
-                self.register(cls, handler=handler_cls, base=base)
-                return handler_cls
+                pass
 
             return _register
         if not util._is_type(cls):
@@ -105,9 +104,7 @@ class Registry:
             self._base_handlers[cls] = handler
 
     def unregister(self, cls: Type[Any]) -> None:
-        self._handlers.pop(cls, None)
-        self._handlers.pop(util.importable_name(cls), None)
-        self._base_handlers.pop(cls, None)
+        pass
 
 
 registry = Registry()
@@ -120,20 +117,7 @@ def handler_accepts_handler_context(fn: Callable[..., Any]) -> bool:
     """
     Check if the handler function has a handler_context parameter.
     """
-    try:
-        params = inspect.signature(fn).parameters
-    except (TypeError, ValueError):
-        return False
-
-    param = params.get("handler_context")
-    if param is None:
-        return False
-
-    return param.kind in (
-        inspect.Parameter.POSITIONAL_OR_KEYWORD,
-        inspect.Parameter.KEYWORD_ONLY,
-        inspect.Parameter.VAR_KEYWORD,
-    )
+    pass
 
 
 class BaseHandler:
@@ -193,16 +177,10 @@ class ArrayHandler(BaseHandler):
     """Flatten and restore array.array objects"""
 
     def flatten(self, obj: array.array, data: Dict[str, Any]) -> HandlerReturn:  # type: ignore[type-arg]
-        data["typecode"] = obj.typecode
-        data["values"] = self.context.flatten(obj.tolist(), reset=False)
-        return data
+        pass
 
     def restore(self, data: Dict[str, Any]) -> array.array:  # type: ignore[type-arg]
-        typecode = data["typecode"]
-        values = self.context.restore(data["values"], reset=False)
-        if typecode == "c":
-            values = [bytes(x) for x in values]
-        return array.array(typecode, values)
+        pass
 
 
 ArrayHandler.handles(array.array)
@@ -218,28 +196,10 @@ class DatetimeHandler(BaseHandler):
     """
 
     def flatten(self, obj: DateTime, data: Dict[str, Any]) -> HandlerReturn:
-        pickler = self.context
-        if not pickler.unpicklable:
-            if hasattr(obj, "isoformat"):
-                result = obj.isoformat()
-            else:
-                result = str(obj)
-            return result
-        cls, args = obj.__reduce__()  # type: ignore[misc]
-        flatten = pickler.flatten
-        payload = util.b64encode(args[0])
-        args = [payload] + [flatten(i, reset=False) for i in args[1:]]
-        data["__reduce__"] = (flatten(cls, reset=False), args)
-        return data
+        pass
 
     def restore(self, data: Dict[str, Any]) -> Any:
-        cls, args = data["__reduce__"]
-        unpickler = self.context
-        restore = unpickler.restore
-        cls = restore(cls, reset=False)
-        value = util.b64decode(args[0])
-        params = (value,) + tuple([restore(i, reset=False) for i in args[1:]])
-        return cls.__new__(cls, *params)
+        pass
 
 
 DatetimeHandler.handles(datetime.datetime)
@@ -251,11 +211,10 @@ class RegexHandler(BaseHandler):
     """Flatten _sre.SRE_Pattern (compiled regex) objects"""
 
     def flatten(self, obj: re.Pattern[str], data: Dict[str, Any]) -> HandlerReturn:
-        data["pattern"] = obj.pattern
-        return data
+        pass
 
     def restore(self, data: Dict[str, Any]) -> re.Pattern[str]:
-        return re.compile(data["pattern"])
+        pass
 
 
 RegexHandler.handles(type(re.compile("")))
@@ -270,10 +229,10 @@ class QueueHandler(BaseHandler):
     """
 
     def flatten(self, obj: queue.Queue[Any], data: Dict[str, Any]) -> HandlerReturn:
-        return data
+        pass
 
     def restore(self, data: Dict[str, Any]) -> queue.Queue[Any]:
-        return queue.Queue()
+        pass
 
 
 QueueHandler.handles(queue.Queue)
@@ -297,11 +256,10 @@ class UUIDHandler(BaseHandler):
     """Serialize uuid.UUID objects"""
 
     def flatten(self, obj: uuid.UUID, data: Dict[str, Any]) -> HandlerReturn:
-        data["hex"] = obj.hex
-        return data
+        pass
 
     def restore(self, data: Dict[str, Any]) -> uuid.UUID:
-        return uuid.UUID(data["hex"])
+        pass
 
 
 UUIDHandler.handles(uuid.UUID)
@@ -311,14 +269,10 @@ class LockHandler(BaseHandler):
     """Serialize threading.Lock objects"""
 
     def flatten(self, obj: Any, data: dict[str, Any]) -> HandlerReturn:
-        data["locked"] = obj.locked()
-        return data
+        pass
 
     def restore(self, data: Dict[str, Any]) -> Any:
-        lock = threading.Lock()
-        if data.get("locked", False):
-            lock.acquire()
-        return lock
+        pass
 
 
 _lock = threading.Lock()
@@ -329,7 +283,7 @@ class TextIOHandler(BaseHandler):
     """Serialize file descriptors as None because we cannot roundtrip"""
 
     def flatten(self, obj: io.TextIOBase, data: Dict[str, Any]) -> None:
-        return None
+        pass
 
     def restore(self, data: Dict[str, Any]) -> NoReturn:
         """Restore should never get called because flatten() returns None"""

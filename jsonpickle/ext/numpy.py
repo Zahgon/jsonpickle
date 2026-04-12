@@ -34,57 +34,38 @@ native_byteorder: str = "<" if sys.byteorder == "little" else ">"
 # considered typing arr as ArrayLike but then we get a mypy error with no attribute dtype
 def get_byteorder(arr: ArrayLike) -> str:
     """translate equals sign to native order"""
-    byteorder = arr.dtype.byteorder  # type: ignore[union-attr]
-    return native_byteorder if byteorder == "=" else byteorder
+    pass
 
 
 class NumpyBaseHandler(BaseHandler):
     def flatten_dtype(self, dtype: DTypeLike, data: dict[str, Any]) -> None:
-        if hasattr(dtype, "tostring"):
-            data["dtype"] = dtype.tostring()  # type: ignore[union-attr]
-        else:
-            dtype = str(dtype)
-            prefix = "(numpy.record, "
-            if dtype.startswith(prefix):
-                dtype = dtype[len(prefix) : -1]
-            data["dtype"] = dtype
+        pass
 
     def restore_dtype(self, data: dict[str, Any]) -> np.dtype:  # type: ignore[type-arg]
-        dtype = data["dtype"]
-        if dtype.startswith(("{", "[")):
-            dtype = ast.literal_eval(dtype)
-        return np.dtype(dtype)  # type: ignore[no-any-return]
+        pass
 
 
 class NumpyDTypeHandler(NumpyBaseHandler):
     def flatten(self, obj: DTypeLike, data: dict[str, Any]) -> dict[str, Any]:
-        self.flatten_dtype(obj, data)
-        return data
+        pass
 
     def restore(self, data: dict[str, Any]) -> DTypeLike:
-        return self.restore_dtype(data)
+        pass
 
 
 class NumpyGenericHandler(NumpyBaseHandler):
     def flatten(self, obj: NDArray[Any], data: dict[str, Any]) -> dict[str, Any]:
-        self.flatten_dtype(obj.dtype.newbyteorder("N"), data)
-        data["value"] = self.context.flatten(obj.tolist(), reset=False)
-        return data
+        pass
 
     def restore(self, data: dict[str, Any]) -> dict[str, Any]:
-        value = self.context.restore(data["value"], reset=False)
-        return self.restore_dtype(data).type(value)  # type: ignore[no-any-return]
+        pass
 
 
 class NumpyDatetimeHandler(NumpyGenericHandler):
     """Extend NumpyGenericHandler to handle nanosecond-resolution datetime64"""
 
     def restore(self, data: dict[str, Any]) -> dict[str, Any]:
-        value = self.context.restore(data["value"], reset=False)
-        dtype = data["dtype"]
-        if dtype.endswith("[ns]"):
-            return self.restore_dtype(data).type(value, "ns")  # type: ignore[no-any-return]
-        return self.restore_dtype(data).type(value)  # type: ignore[no-any-return]
+        pass
 
 
 class UnpickleableNumpyGenericHandler(NumpyGenericHandler):
@@ -95,10 +76,7 @@ class UnpickleableNumpyGenericHandler(NumpyGenericHandler):
 
     # TODO: narrow return value down from Any
     def flatten(self, obj: NDArray[Any], data: dict[str, Any]) -> Any:
-        if not self.context.unpicklable:
-            return self.context.flatten(obj.tolist(), reset=False)
-        else:
-            return super(NumpyGenericHandler, self).flatten(obj, data)
+        pass
 
     def restore(self, data: dict[str, Any]) -> NoReturn:
         raise NotImplementedError
@@ -108,34 +86,16 @@ class NumpyNDArrayHandler(NumpyBaseHandler):
     """Stores arrays as text representation, without regard for views"""
 
     def flatten_flags(self, obj: NDArray[Any], data: dict[str, Any]) -> None:
-        if obj.flags.writeable is False:
-            data["writeable"] = False
+        pass
 
     def restore_flags(self, data: dict[str, Any], arr: NDArray[Any]) -> None:
-        if not data.get("writeable", True):
-            arr.flags.writeable = False
+        pass
 
     def flatten(self, obj: NDArray[Any], data: dict[str, Any]) -> dict[str, Any]:
-        self.flatten_dtype(obj.dtype.newbyteorder("N"), data)
-        self.flatten_flags(obj, data)
-        data["values"] = self.context.flatten(obj.tolist(), reset=False)
-        if 0 in obj.shape:
-            # add shape information explicitly as it cannot be
-            # inferred from an empty list
-            data["shape"] = obj.shape
-        return data
+        pass
 
     def restore(self, data: dict[str, Any]) -> NDArray[Any]:
-        values = self.context.restore(data["values"], reset=False)
-        arr = np.array(
-            values, dtype=self.restore_dtype(data), order=data.get("order", "C")
-        )
-        shape = data.get("shape", None)
-        if shape is not None:
-            arr = arr.reshape(shape)
-
-        self.restore_flags(data, arr)
-        return arr
+        pass
 
 
 class NumpyNDArrayHandlerBinary(NumpyNDArrayHandler):
@@ -164,91 +124,18 @@ class NumpyNDArrayHandlerBinary(NumpyNDArrayHandler):
         self.compression = compression
 
     def flatten_byteorder(self, obj: NDArray[Any], data: dict[str, Any]) -> None:
-        byteorder = obj.dtype.byteorder
-        if byteorder != "|":
-            data["byteorder"] = get_byteorder(obj)
+        pass
 
     def restore_byteorder(self, data: dict[str, Any], arr: NDArray[Any]) -> None:
-        byteorder = data.get("byteorder", None)
-        if byteorder:
-            arr.dtype = arr.dtype.newbyteorder(byteorder)  # type: ignore[misc]
+        pass
 
     def flatten(self, obj: NDArray[Any], data: dict[str, Any]) -> dict[str, Any]:
         """encode numpy to json"""
-        if self.size_threshold is None or self.size_threshold >= obj.size:
-            # encode as text
-            data = super().flatten(obj, data)
-        else:
-            # encode as binary
-            if obj.dtype == object:
-                # There's a bug deep in the bowels of numpy that causes a
-                # segfault when round-tripping an ndarray of dtype object.
-                # E.g., the following will result in a segfault:
-                #     import numpy as np
-                #     arr = np.array([str(i) for i in range(3)],
-                #                    dtype=object)
-                #     dtype = arr.dtype
-                #     shape = arr.shape
-                #     buf = arr.tobytes()
-                #     del arr
-                #     arr = np.ndarray(buffer=buf, dtype=dtype,
-                #                      shape=shape).copy()
-                # So, save as a binary-encoded list in this case
-                buf = json.dumps(obj.tolist()).encode()
-            elif hasattr(obj, "tobytes"):
-                # numpy docstring is lacking as of 1.11.2,
-                # but this is the option we need
-                buf = obj.tobytes(order="A")
-            else:
-                # numpy < 1.9 compatibility
-                buf = obj.tostring(order="a")  # type: ignore[attr-defined]
-            if self.compression:
-                buf = self.compression.compress(buf)
-            data["values"] = b64encode(buf)
-            data["shape"] = obj.shape
-            self.flatten_dtype(obj.dtype.newbyteorder("N"), data)
-            self.flatten_byteorder(obj, data)
-            self.flatten_flags(obj, data)
-
-            if not obj.flags.c_contiguous:
-                data["order"] = "F"
-
-        return data
+        pass
 
     def restore(self, data: dict[str, Any]) -> NDArray[Any]:
         """decode numpy from json"""
-        values = data["values"]
-        if isinstance(values, list):
-            # decode text representation
-            arr = super().restore(data)
-        elif isinstance(values, (int, float)):
-            # single-value array
-            arr = np.array([values], dtype=self.restore_dtype(data))
-        else:
-            # decode binary representation
-            dtype = self.restore_dtype(data)
-            buf = b64decode(values)
-            if self.compression:
-                buf = self.compression.decompress(buf)
-            # See note above about segfault bug for numpy dtype object. Those
-            # are saved as a list to work around that.
-            if dtype == object:
-                values = json.loads(buf.decode())
-                arr = np.array(values, dtype=dtype, order=data.get("order", "C"))
-                shape = data.get("shape", None)
-                if shape is not None:
-                    arr = arr.reshape(shape)
-            else:
-                arr = np.ndarray(
-                    buffer=buf,
-                    dtype=dtype,
-                    shape=data.get("shape"),  # type: ignore[arg-type]
-                    order=data.get("order", "C"),
-                ).copy()  # make a copy, to force the result to own the data
-                self.restore_byteorder(data, arr)
-            self.restore_flags(data, arr)
-
-        return arr
+        pass
 
 
 class NumpyNDArrayHandlerView(NumpyNDArrayHandlerBinary):
@@ -296,151 +183,21 @@ class NumpyNDArrayHandlerView(NumpyNDArrayHandlerBinary):
 
     def flatten(self, obj: NDArray[Any], data: dict[str, Any]) -> dict[str, Any]:
         """encode numpy to json"""
-        base = obj.base
-        deepcopy_failed = False
-        if base is None and obj.flags.forc:
-            # store by value
-            data = super().flatten(obj, data)
-            # ensure that views on arrays stored as text
-            # are interpreted correctly
-            if not obj.flags.c_contiguous:
-                data["order"] = "F"
-        elif isinstance(base, np.ndarray) and base.flags.forc:
-            # store by reference
-            data["base"] = self.context.flatten(base, reset=False)
-
-            offset = obj.ctypes.data - base.ctypes.data
-            if offset:
-                data["offset"] = offset
-
-            if not obj.flags.c_contiguous:
-                data["strides"] = obj.strides
-
-            data["shape"] = obj.shape
-            self.flatten_dtype(obj.dtype.newbyteorder("N"), data)
-            self.flatten_flags(obj, data)
-
-            if get_byteorder(obj) != "|":
-                byteorder = "S" if get_byteorder(obj) != get_byteorder(base) else None
-                if byteorder:
-                    data["byteorder"] = byteorder
-
-            if self.size_threshold is None or self.size_threshold >= obj.size:
-                # not used in restore since base is present, but
-                # include values for human-readability
-                super(NumpyNDArrayHandlerBinary, self).flatten(obj, data)
-        elif base is not None:
-            try:
-                base_buf = np.frombuffer(base, dtype=np.uint8)
-            except (TypeError, ValueError):
-                base_buf = None
-
-            allow_buffer_base = False
-            if base_buf is not None and base_buf.flags.forc:
-                if isinstance(base, (bytes, bytearray)):
-                    allow_buffer_base = obj.dtype.fields is not None
-                else:
-                    allow_buffer_base = True
-
-            if allow_buffer_base:
-                assert base_buf is not None
-                if isinstance(base, (bytes, bytearray)):
-                    base_store = base
-                elif isinstance(base, memoryview):
-                    base_store = base.tobytes()
-                else:
-                    base_store = base_buf.tobytes()
-
-                data["base"] = self.context.flatten(base_store, reset=False)
-
-                offset = obj.ctypes.data - base_buf.ctypes.data
-                if offset:
-                    data["offset"] = offset
-
-                if not obj.flags.c_contiguous:
-                    data["strides"] = obj.strides
-
-                data["shape"] = obj.shape
-                self.flatten_dtype(obj.dtype.newbyteorder("N"), data)
-                self.flatten_flags(obj, data)
-
-                if get_byteorder(obj) != "|":
-                    data["byteorder"] = get_byteorder(obj)
-
-                if self.size_threshold is None or self.size_threshold >= obj.size:
-                    # not used in restore since base is present, but
-                    # include values for human-readability
-                    super(NumpyNDArrayHandlerBinary, self).flatten(obj, data)
-            else:
-                deepcopy_failed = True
-        else:
-            deepcopy_failed = True
-
-        if deepcopy_failed:
-            # store a deepcopy or fail
-            if self.mode == "warn":
-                msg = (
-                    "ndarray is defined by reference to an object "
-                    "we do not know how to serialize. "
-                    "A deep copy is serialized instead, breaking "
-                    "memory aliasing."
-                )
-                warnings.warn(msg)
-            elif self.mode == "raise":
-                msg = (
-                    "ndarray is defined by reference to an object we do "
-                    "not know how to serialize."
-                )
-                raise ValueError(msg)
-            data = super().flatten(obj.copy(), data)
-
-        return data
+        pass
 
     def restore(self, data: dict[str, Any]) -> NDArray[Any]:
         """decode numpy from json"""
-        base = data.get("base", None)
-        if base is None:
-            # decode array with owndata=True
-            arr = super().restore(data)
-        else:
-            # decode array view, which references the data of another array
-            base = self.context.restore(base, reset=False)
-            buffer: Any
-            if isinstance(base, np.ndarray):
-                buffer = base.data
-            elif isinstance(base, (bytes, bytearray, memoryview)):
-                buffer = base
-            else:
-                # the object is probably a nested list
-                base = np.array(base)
-                buffer = base.data
-            if isinstance(base, np.ndarray):
-                assert base.flags.forc, (
-                    "Current implementation assumes base is C or F contiguous"
-                )
-
-            arr = np.ndarray(
-                buffer=buffer,
-                dtype=self.restore_dtype(data).newbyteorder(data.get("byteorder", "|")),
-                shape=data.get("shape"),  # type: ignore[arg-type]
-                offset=data.get("offset", 0),
-                strides=data.get("strides", None),
-            )
-
-            self.restore_flags(data, arr)
-
-        return arr
+        pass
 
 
 class NumpyUfuncHandler(BaseHandler):
     def flatten(self, obj: np.ufunc, data: dict[str, Any]) -> dict[str, Any]:
-        data["importable_name"] = importable_name(obj)
-        return data
+        pass
 
     def restore(self, obj: dict[str, Any]) -> np.ufunc:
         # it seems proper practice to make mypy happy that it can't return None here
         # is to use the cast
-        return cast(np.ufunc, loadclass(obj["importable_name"]))
+        pass
 
 
 def register_handlers(
@@ -454,33 +211,9 @@ def register_handlers(
         Options with an 'ndarray_' prefix correspond to the same-named
         NumpyNDArrayHandlerView constructor options, sans the 'ndarray_' prefix.
     """
-    ndarray_handler = NumpyNDArrayHandlerView(
-        mode=ndarray_mode,
-        size_threshold=ndarray_size_threshold,
-        compression=ndarray_compression,
-    )
-    register(np.ndarray, ndarray_handler, base=True)  # type: ignore[arg-type]
-    register(np.dtype, NumpyDTypeHandler, base=True)
-    register(np.generic, NumpyGenericHandler, base=True)
-    # Numpy 1.20 has custom dtypes that must be registered separately.
-    register(np.dtype(np.void).__class__, NumpyDTypeHandler, base=True)
-    register(np.dtype(np.float32).__class__, NumpyDTypeHandler, base=True)
-    register(np.dtype(np.int32).__class__, NumpyDTypeHandler, base=True)
-    register(np.dtype(np.datetime64).__class__, NumpyDTypeHandler, base=True)
-    register(np.datetime64, NumpyDatetimeHandler, base=True)
-    # other handlers
-    register(np.ufunc, NumpyUfuncHandler, base=True)
+    pass
 
 
 def unregister_handlers() -> None:
     """Remove numpy handlers from the handler registry"""
-    unregister(np.dtype)
-    unregister(np.generic)
-    unregister(np.ndarray)
-    # Numpy 1.20 dtypes
-    unregister(np.dtype(np.void).__class__)
-    unregister(np.dtype(np.float32).__class__)
-    unregister(np.dtype(np.int32).__class__)
-    unregister(np.dtype(np.datetime64).__class__)
-    # other handlers
-    unregister(np.ufunc)
+    pass

@@ -15,9 +15,7 @@ class JSONBackend:
 
     def _verify(self) -> None:
         """Ensures that we've loaded at least one JSON backend."""
-        if self._verified:
-            return
-        raise AssertionError("jsonpickle could not load any json modules")
+        pass
 
     def encode(
         self, obj: Any, indent: Optional[int] = None, separators: Optional[Any] = None
@@ -29,20 +27,7 @@ class JSONBackend:
         exception if no backend is able to encode the object.
 
         """
-        self._verify()
-
-        if not self._fallthrough:
-            name = self._backend_names[0]
-            return self.backend_encode(name, obj, indent=indent, separators=separators)
-
-        for idx, name in enumerate(self._backend_names):
-            try:
-                return self.backend_encode(
-                    name, obj, indent=indent, separators=separators
-                )
-            except Exception as e:
-                if idx == len(self._backend_names) - 1:
-                    raise e
+        pass
 
     # def dumps
     dumps = encode
@@ -55,20 +40,7 @@ class JSONBackend:
         exception if no backends are able to decode the string.
 
         """
-        self._verify()
-
-        if not self._fallthrough:
-            name = self._backend_names[0]
-            return self.backend_decode(name, string)
-
-        for idx, name in enumerate(self._backend_names):
-            try:
-                return self.backend_decode(name, string)
-            except self._decoder_exceptions[name] as e:
-                if idx == len(self._backend_names) - 1:
-                    raise e
-                else:
-                    pass  # and try a more forgiving encoder
+        pass
 
     # def loads
     loads = decode
@@ -123,7 +95,7 @@ class JSONBackend:
         re-raise any exceptions raised by the backends.
 
         """
-        self._fallthrough = enable
+        pass
 
     def _store(
         self, dct: Dict[str, Any], backend: str, obj: ModuleType, name: str
@@ -217,19 +189,10 @@ class JSONBackend:
         indent: Optional[int] = None,
         separators: Optional[str] = None,
     ) -> str:
-        optargs, optkwargs = self._encoder_options.get(name, ([], {}))
-        encoder_kwargs = optkwargs.copy()
-        if indent is not None:
-            encoder_kwargs["indent"] = indent  # type: ignore[assignment]
-        if separators is not None:
-            encoder_kwargs["separators"] = separators  # type: ignore[assignment]
-        encoder_args = (obj,) + tuple(optargs)
-        return self._encoders[name](*encoder_args, **encoder_kwargs)  # type: ignore[no-any-return]
+        pass
 
     def backend_decode(self, name: str, string: str) -> Any:
-        optargs, optkwargs = self._decoder_options.get(name, ((), {}))
-        decoder_kwargs = optkwargs.copy()
-        return self._decoders[name](string, *optargs, **decoder_kwargs)
+        pass
 
     def set_preferred_backend(self, name: str) -> None:
         """
@@ -249,12 +212,7 @@ class JSONBackend:
         AssertionError is raised if the backend has not been loaded.
 
         """
-        if name in self._backend_names:
-            self._backend_names.remove(name)
-            self._backend_names.insert(0, name)
-        else:
-            errmsg = 'The "%s" backend has not been loaded.' % name
-            raise AssertionError(errmsg)
+        pass
 
     def set_encoder_options(self, name: str, *args: Any, **kwargs: Any) -> None:
         """
@@ -275,7 +233,7 @@ class JSONBackend:
         contains ``__slots__``, and you set ``warn`` to True,
         a TypeError will be raised!
         """
-        self._encoder_options[name] = (args, kwargs)
+        pass
 
     def set_decoder_options(self, name: str, *args: Any, **kwargs: Any) -> None:
         """
@@ -293,7 +251,7 @@ class JSONBackend:
         the supported arguments and keyword arguments.
 
         """
-        self._decoder_options[name] = (args, kwargs)
+        pass
 
 
 json = JSONBackend()

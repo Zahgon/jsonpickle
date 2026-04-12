@@ -15,4 +15,4 @@ ustr = str
 
 
 def iterator(class_):  # type: ignore[no-untyped-def]
-    return class_
+    pass

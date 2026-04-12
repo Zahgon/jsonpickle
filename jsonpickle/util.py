@@ -98,49 +98,7 @@ def _is_type(obj: Any) -> bool:
 
 def has_method(obj: Any, name: str) -> bool:
     # false if attribute doesn't exist
-    if not hasattr(obj, name):
-        return False
-    func = getattr(obj, name)
-
-    # builtin descriptors like __getnewargs__
-    if isinstance(func, types.BuiltinMethodType):
-        return True
-
-    # note that FunctionType has a different meaning in py2/py3
-    if not isinstance(func, (types.MethodType, types.FunctionType)):
-        return False
-
-    # need to go through __dict__'s since in py3
-    # methods are essentially descriptors
-
-    # __class__ for old-style classes
-    base_type = obj if _is_type(obj) else obj.__class__
-    original = None
-    # there is no .mro() for old-style classes
-    for subtype in inspect.getmro(base_type):
-        original = vars(subtype).get(name)
-        if original is not None:
-            break
-
-    # name not found in the mro
-    if original is None:
-        return False
-
-    # static methods are always fine
-    if isinstance(original, staticmethod):
-        return True
-
-    # at this point, the method has to be an instancemthod or a classmethod
-    if not hasattr(func, "__self__"):
-        return False
-    bound_to = getattr(func, "__self__")
-
-    # class methods
-    if isinstance(original, classmethod):
-        return issubclass(base_type, bound_to)
-
-    # bound methods
-    return isinstance(obj, type(bound_to))
+    pass
 
 
 def _is_object(obj: Any) -> bool:
@@ -155,16 +113,14 @@ def _is_object(obj: Any) -> bool:
     >>> _is_object(lambda x: 1)
     False
     """
-    return isinstance(obj, object) and not isinstance(
-        obj, (type, types.FunctionType, types.BuiltinFunctionType)
-    )
+    pass
 
 
 def _is_not_class(obj: Any) -> bool:
     """Determines if the object is not a class or a class instance.
     Used for serializing properties.
     """
-    return type(obj) in NON_CLASS_TYPES
+    pass
 
 
 def _is_primitive(obj: Any) -> bool:
@@ -177,12 +133,12 @@ def _is_primitive(obj: Any) -> bool:
     >>> _is_primitive([4,4])
     False
     """
-    return type(obj) in PRIMITIVES
+    pass
 
 
 def _is_enum(obj: Any) -> bool:
     """Is the object an enum?"""
-    return "enum" in sys.modules and isinstance(obj, sys.modules["enum"].Enum)
+    pass
 
 
 def _is_dictionary_subclass(obj: Any) -> bool:
@@ -193,12 +149,7 @@ def _is_dictionary_subclass(obj: Any) -> bool:
     >>> _is_dictionary_subclass(Temp())
     True
     """
-    # TODO: add UserDict
-    return (
-        hasattr(obj, "__class__")
-        and issubclass(obj.__class__, dict)
-        and type(obj) is not dict
-    )
+    pass
 
 
 def _is_sequence_subclass(obj: Any) -> bool:
@@ -211,11 +162,7 @@ def _is_sequence_subclass(obj: Any) -> bool:
     >>> _is_sequence_subclass(Temp())
     True
     """
-    return (
-        hasattr(obj, "__class__")
-        and issubclass(obj.__class__, SEQUENCES)
-        and type(obj) not in SEQUENCES_SET
-    )
+    pass
 
 
 def _is_noncomplex(obj: Any) -> bool:
@@ -224,7 +171,7 @@ def _is_noncomplex(obj: Any) -> bool:
 
         * :class:`~time.struct_time`
     """
-    return type(obj) is time.struct_time
+    pass
 
 
 def _is_function(obj: Any) -> bool:
@@ -243,7 +190,7 @@ def _is_function(obj: Any) -> bool:
     >>> _is_function(1)
     False
     """
-    return type(obj) in FUNCTION_TYPES
+    pass
 
 
 def _is_module_function(obj: Any) -> bool:
@@ -257,14 +204,7 @@ def _is_module_function(obj: Any) -> bool:
     False
 
     """
-
-    return (
-        hasattr(obj, "__class__")
-        and isinstance(obj, (types.FunctionType, types.BuiltinFunctionType))
-        and hasattr(obj, "__module__")
-        and hasattr(obj, "__name__")
-        and obj.__name__ != "<lambda>"
-    ) or _is_cython_function(obj)
+    pass
 
 
 def _is_picklable(name: str, value: types.FunctionType) -> bool:
@@ -282,9 +222,7 @@ def _is_picklable(name: str, value: types.FunctionType) -> bool:
     False
 
     """
-    if name in tags.RESERVED:
-        return False
-    return _is_module_function(value) or not _is_function(value)
+    pass
 
 
 def _is_installed(module: str) -> bool:
@@ -296,30 +234,23 @@ def _is_installed(module: str) -> bool:
     False
 
     """
-    try:
-        __import__(module)
-        return True
-    except ImportError:
-        return False
+    pass
 
 
 def _is_list_like(obj: Any) -> bool:
-    return hasattr(obj, "__getitem__") and hasattr(obj, "append")
+    pass
 
 
 def _is_iterator(obj: Any) -> bool:
-    return isinstance(obj, abc_iterator) and not isinstance(obj, io.IOBase)
+    pass
 
 
 def _is_collections(obj: Any) -> bool:
-    try:
-        return type(obj).__module__ == "collections"
-    except Exception:
-        return False
+    pass
 
 
 def _is_reducible_sequence_subclass(obj: Any) -> bool:
-    return hasattr(obj, "__class__") and issubclass(obj.__class__, SEQUENCES)
+    pass
 
 
 def _is_reducible(obj: Any) -> bool:
@@ -327,44 +258,17 @@ def _is_reducible(obj: Any) -> bool:
     Returns false if of a type which have special casing,
     and should not have their __reduce__ methods used
     """
-    # defaultdicts may contain functions which we cannot serialise
-    if _is_collections(obj) and not isinstance(obj, collections.defaultdict):
-        return True
-    if (
-        type(obj) in NON_REDUCIBLE_TYPES
-        or obj is object
-        or _is_dictionary_subclass(obj)
-        or isinstance(obj, types.ModuleType)
-        or _is_reducible_sequence_subclass(obj)
-        or _is_list_like(obj)
-        or isinstance(getattr(obj, "__slots__", None), _ITERATOR_TYPE)
-        or (_is_type(obj) and obj.__module__ == "datetime")
-    ):
-        return False
-    return True
+    pass
 
 
 def _is_cython_function(obj: Any) -> bool:
     """Returns true if the object is a reference to a Cython function"""
-    return (
-        callable(obj)
-        and hasattr(obj, "__repr__")
-        and repr(obj).startswith("<cyfunction ")
-    )
+    pass
 
 
 def _is_readonly(obj: Any, attr: str, value: Any) -> bool:
     # CPython 3.11+ has 0-cost try/except, please use up-to-date versions!
-    try:
-        setattr(obj, attr, value)
-        return False
-    except AttributeError:
-        # this is okay, it means the attribute couldn't be set
-        return True
-    except TypeError:
-        # this should only be happening when obj is a dict
-        # as these errors happen when attr isn't a str
-        return True
+    pass
 
 
 def in_dict(obj: Any, key: str, default: bool = False) -> bool:
@@ -372,7 +276,7 @@ def in_dict(obj: Any, key: str, default: bool = False) -> bool:
     Returns true if key exists in obj.__dict__; false if not in.
     If obj.__dict__ is absent, return default
     """
-    return (key in obj.__dict__) if getattr(obj, "__dict__", None) else default
+    pass
 
 
 def in_slots(obj: Any, key: str, default: bool = False) -> bool:
@@ -380,7 +284,7 @@ def in_slots(obj: Any, key: str, default: bool = False) -> bool:
     Returns true if key exists in obj.__slots__; false if not in.
     If obj.__slots__ is absent, return default
     """
-    return (key in obj.__slots__) if getattr(obj, "__slots__", None) else default
+    pass
 
 
 def has_reduce(obj: Any) -> tuple[bool, bool]:
@@ -390,50 +294,7 @@ def has_reduce(obj: Any) -> tuple[bool, bool]:
 
     Returns a tuple of booleans (has_reduce, has_reduce_ex)
     """
-
-    if not _is_reducible(obj) or _is_type(obj):
-        return (False, False)
-
-    # in this case, reduce works and is desired
-    # notwithstanding depending on default object
-    # reduce
-    if _is_noncomplex(obj):
-        return (False, True)
-
-    has_reduce = False
-    has_reduce_ex = False
-
-    REDUCE = "__reduce__"
-    REDUCE_EX = "__reduce_ex__"
-
-    # For object instance
-    has_reduce = in_dict(obj, REDUCE) or in_slots(obj, REDUCE)
-    has_reduce_ex = in_dict(obj, REDUCE_EX) or in_slots(obj, REDUCE_EX)
-
-    # turn to the MRO
-    for base in type(obj).__mro__:
-        if _is_reducible(base):
-            has_reduce = has_reduce or in_dict(base, REDUCE)
-            has_reduce_ex = has_reduce_ex or in_dict(base, REDUCE_EX)
-        if has_reduce and has_reduce_ex:
-            return (has_reduce, has_reduce_ex)
-
-    # for things that don't have a proper dict but can be
-    # getattred (rare, but includes some builtins)
-    cls = type(obj)
-    object_reduce = getattr(object, REDUCE)
-    object_reduce_ex = getattr(object, REDUCE_EX)
-    if not has_reduce:
-        has_reduce_cls = getattr(cls, REDUCE, False)
-        if has_reduce_cls is not object_reduce:
-            has_reduce = has_reduce_cls
-
-    if not has_reduce_ex:
-        has_reduce_ex_cls = getattr(cls, REDUCE_EX, False)
-        if has_reduce_ex_cls is not object_reduce_ex:
-            has_reduce_ex = has_reduce_ex_cls
-
-    return (has_reduce, has_reduce_ex)
+    pass
 
 
 def translate_module_name(module: str) -> str:
@@ -459,8 +320,7 @@ def _0_9_6_compat_untranslate(module: str) -> str:
     """Provide compatibility for pickles created with jsonpickle 0.9.6 and
     earlier, remapping `exceptions` and `__builtin__` to `builtins`.
     """
-    lookup = dict(__builtin__="builtins", exceptions="builtins")
-    return lookup.get(module, module)
+    pass
 
 
 def untranslate_module_name(module: str) -> str:
@@ -470,7 +330,7 @@ def untranslate_module_name(module: str) -> str:
     a module name available to the current version of Python.
 
     """
-    return _0_9_6_compat_untranslate(module)
+    pass
 
 
 def importable_name(cls: Union[type, Callable[..., Any]]) -> str:
@@ -514,41 +374,35 @@ def b64encode(data: bytes) -> str:
     """
     Encode binary data to ascii text in base64. Data must be bytes.
     """
-    return base64.b64encode(data).decode("ascii")
+    pass
 
 
 def b64decode(payload: str) -> bytes:
     """
     Decode payload - must be ascii text.
     """
-    try:
-        return base64.b64decode(payload)
-    except (TypeError, binascii.Error):
-        return b""
+    pass
 
 
 def b85encode(data: bytes) -> str:
     """
     Encode binary data to ascii text in base85. Data must be bytes.
     """
-    return base64.b85encode(data).decode("ascii")
+    pass
 
 
 def b85decode(payload: bytes) -> bytes:
     """
     Decode payload - must be ascii text.
     """
-    try:
-        return base64.b85decode(payload)
-    except (TypeError, ValueError):
-        return b""
+    pass
 
 
 def itemgetter(
     obj: Any,
     getter: Callable[[Any], Any] = operator.itemgetter(0),
 ) -> str:
-    return str(getter(obj))
+    pass
 
 
 def items(
@@ -580,32 +434,4 @@ def loadclass(
     0
 
     """
-    # Check if the class exists in a caller-provided scope
-    if classes:
-        try:
-            return classes[module_and_name]
-        except KeyError:
-            # maybe they didn't provide a fully qualified path
-            try:
-                return classes[module_and_name.rsplit(".", 1)[-1]]
-            except KeyError:
-                pass
-    # Otherwise, load classes from globally-accessible imports
-    names = module_and_name.split(".")
-    # First assume that everything up to the last dot is the module name,
-    # then try other splits to handle classes that are defined within
-    # classes
-    for up_to in range(len(names) - 1, 0, -1):
-        module = untranslate_module_name(".".join(names[:up_to]))
-        try:
-            __import__(module)
-            obj = sys.modules[module]
-            for class_name in names[up_to:]:
-                obj = getattr(obj, class_name)
-            return obj
-        except (AttributeError, ImportError, ValueError):
-            continue
-    # NoneType is a special case and can not be imported/created
-    if module_and_name == "builtins.NoneType":
-        return type(None)
-    return None
+    pass

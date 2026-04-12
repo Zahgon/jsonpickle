@@ -12,18 +12,15 @@ __all__ = ["register_handlers", "unregister_handlers"]
 
 class GmpyMPZHandler(BaseHandler):
     def flatten(self, obj: gmpy.mpz, data: Dict[str, Any]) -> HandlerReturn:
-        data["int"] = int(obj)
-        return data
+        pass
 
     def restore(self, data: Dict[str, Any]) -> gmpy.mpz:
-        return gmpy.mpz(data["int"])
+        pass
 
 
 def register_handlers() -> None:
-    if gmpy is not None:
-        register(gmpy.mpz, GmpyMPZHandler, base=True)
+    pass
 
 
 def unregister_handlers() -> None:
-    if gmpy is not None:
-        unregister(gmpy.mpz)
+    pass
